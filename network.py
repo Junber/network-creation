@@ -73,7 +73,6 @@ def build_outcome(edges : tuple) -> None:
 		outcome_graph.add_node(g, costs = costs)
 		outcomes[edges] = g
 
-# TODO: Do less stuff when costs are infinite
 def connect_outcomes() -> None:
 	for edges in outcomes:
 		g = outcomes[edges]
@@ -81,7 +80,7 @@ def connect_outcomes() -> None:
 			for edge in edges:
 				neighbor = outcomes.get(tuple(i for i in edges if i != edge), None)
 				if neighbor is not None:
-					outcome_graph.add_edge(g, neighbor)
+					outcome_graph.add_edge(g, neighbor, changer=edge[0])
 		else:
 			for player in range(n):
 				player_edges = [(player, a) for a in range(n) if a != player]
@@ -89,7 +88,7 @@ def connect_outcomes() -> None:
 					neighbor_edges = tuple(edge for edge in all_edges if (edge in toggle_edges) != (edge in edges))
 					neighbor = outcomes.get(neighbor_edges, None)
 					if neighbor is not None:
-						outcome_graph.add_edge(g, neighbor)
+						outcome_graph.add_edge(g, neighbor, changer=player)
 
 def build_outcome_graph() -> None:
 	print('Building outcomes')
@@ -100,9 +99,9 @@ def build_outcome_graph() -> None:
 
 def is_equilibrium(graph: nx.Graph, costs: dict, node: int) -> bool:
 	for neighbor in graph[node]:
-		for player in node[1]:
-			if player != 'total' and costs[node][player] > costs[neighbor][player]:
-				return False
+		player = graph[node][neighbor]['changer']
+		if costs[node][player] > costs[neighbor][player]:
+			return False
 	return True
 			
 build_outcome_graph()
@@ -122,14 +121,17 @@ for node in outcome_graph.nodes():
 		colors.append((1,0,0))
 
 print('Drawing')
-#nx.draw(outcome_graph, node_color=colors)
-labels = {graph : index + 1 for index, graph in enumerate(equilibria)}
-nx.draw(outcome_graph.subgraph(equilibria), labels=labels)
-plt.show()
-
 print(len(equilibria))
+w = math.ceil(math.sqrt(len(equilibria) + 1))
+h = math.ceil((len(equilibria) + 1) / w)
+print(w,h)
+fig, axs = plt.subplots(w,h)
+labels = {graph : index + 1 for index, graph in enumerate(equilibria)}
+#nx.draw(outcome_graph, node_color=colors)
+nx.draw(outcome_graph.subgraph(equilibria), labels=labels, ax=axs[0])
 
-for equilibrium in equilibria:
+
+for i, equilibrium in enumerate(equilibria):
 	print(costs[equilibrium])
-	nx.draw(equilibrium, pos = positions, with_labels=True)
+	nx.draw(equilibrium, pos = positions, with_labels=True, ax=axs[i+1])
 	plt.show()
