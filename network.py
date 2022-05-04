@@ -3,12 +3,7 @@ import math
 import networkx as nx
 import matplotlib.pyplot as plt
 
-positions = [
-	(0,0),
-	(1,1),
-	(2,3),
-	(10,3),
-]
+positions = [(-0.13698283326720598, 0.08288618577076463), (1, 0), (2, 0), (0.4999994645292778, 1.9364916180298117), (1.4979992586034918, 1.93700707153958)]
 alpha = 0.6
 greedy = False
 skip_infinite=True
@@ -38,6 +33,8 @@ def player_costs(graph : nx.Graph) -> dict:
 				if other_node in lengths:
 					cost += lengths[other_node] / distance(node, other_node)
 				else:
+					if skip_infinite:
+						return math.inf
 					cost = math.inf
 		
 		#Greedy
@@ -49,6 +46,8 @@ def player_costs(graph : nx.Graph) -> dict:
 						found = True
 						break
 				if not found:
+					if skip_infinite:
+						return math.inf
 					cost = math.inf
 					break
 
@@ -62,12 +61,15 @@ all_edges = [(a,b) for a in range(n) for b in range(n) if a != b]
 outcomes = {}
 outcome_graph = nx.Graph()
 def build_outcome(edges : tuple) -> None:
+	if skip_infinite and len(edges) < n - 1:
+		return
+
 	g : nx.DiGraph = nx.empty_graph(n, nx.DiGraph)
 	for edge in edges:
 		g.add_edge(edge[0], edge[1], weight=distance(edge[0], edge[1]))
 
 	costs = player_costs(g)
-	if not skip_infinite or costs['total'] != math.inf:
+	if not skip_infinite or (costs != math.inf and costs['total'] != math.inf):
 		outcome_graph.add_node(g, costs = costs)
 		outcomes[edges] = g
 
@@ -90,8 +92,10 @@ def connect_outcomes() -> None:
 						outcome_graph.add_edge(g, neighbor)
 
 def build_outcome_graph() -> None:
+	print('Building outcomes')
 	for edges in chain.from_iterable(combinations(all_edges, r) for r in range(len(all_edges)+1)):
 		build_outcome(edges)
+	print('Connecting outcomes')
 	connect_outcomes()
 
 def is_equilibrium(graph: nx.Graph, costs: dict, node: int) -> bool:
@@ -106,6 +110,7 @@ build_outcome_graph()
 #valid_nodes = [node[0] for node in outcome_graph.nodes().data() if node[1]['costs']['total'] != math.inf]
 #finite_outcome_graph = outcome_graph.subgraph(valid_nodes)
 
+print('Finding equilibria')
 colors = []
 equilibria = []
 costs = nx.get_node_attributes(outcome_graph, 'costs')
@@ -116,9 +121,13 @@ for node in outcome_graph.nodes():
 	else:
 		colors.append((1,0,0))
 
-nx.draw(outcome_graph, node_color=colors)
+print('Drawing')
+#nx.draw(outcome_graph, node_color=colors)
+labels = {graph : index + 1 for index, graph in enumerate(equilibria)}
+nx.draw(outcome_graph.subgraph(equilibria), labels=labels)
 plt.show()
 
+print(len(equilibria))
 
 for equilibrium in equilibria:
 	print(costs[equilibrium])
