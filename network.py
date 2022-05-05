@@ -5,8 +5,11 @@ import matplotlib.pyplot as plt
 
 positions = [(-0.13698283326720598, 0.08288618577076463), (1, 0), (2, 0), (0.4999994645292778, 1.9364916180298117), (1.4979992586034918, 1.93700707153958)]
 alpha = 0.6
-greedy = False
-skip_infinite=True
+greedy_equilibria = False
+greedy_routing = True
+directed_edges = False
+only_unilateral_edges = True # Only relevant if directed_edges = False
+skip_infinite = True
 
 n = len(positions)
 
@@ -17,14 +20,14 @@ def distance(a: int, b:int) -> float:
 	return math.sqrt(d[0]*d[0] + d[1]*d[1])
 
 
-def player_costs(graph : nx.Graph) -> dict:
+def player_costs(graph : nx.Graph, edges: tuple) -> dict:
 	costs = {}
 	total_cost = 0
 	for node in graph.nodes():
 		cost = 0
 
 		#Edge cost
-		cost += alpha * len(graph[node])
+		cost += alpha * len(edges)
 
 		#Stretches
 		lengths = nx.shortest_path_length(graph, node)
@@ -37,58 +40,59 @@ def player_costs(graph : nx.Graph) -> dict:
 						return math.inf
 					cost = math.inf
 		
-		#Greedy
-		for target in graph.nodes():
-			if target != node:
-				found = False
-				for neighbor in graph[node]:
-					if distance(neighbor, target) < distance(node, target):
-						found = True
+		#Greedy Routing
+		if greedy_routing:
+			for target in graph.nodes():
+				if target != node:
+					found = False
+					for neighbor in graph[node]:
+						if distance(neighbor, target) < distance(node, target):
+							found = True
+							break
+					if not found:
+						if skip_infinite:
+							return math.inf
+						cost = math.inf
 						break
-				if not found:
-					if skip_infinite:
-						return math.inf
-					cost = math.inf
-					break
 
 		costs[node] = cost
 		total_cost += cost
 	costs['total'] = total_cost
 	return costs
 
-all_edges = [(a,b) for a in range(n) for b in range(n) if a != b]
+all_edges = [(a,b) for a in range(n) for b in range(n) if a != b and (directed_edges or a < b)]
 
-outcomes = {}
+def build_graph(edges : tuple) -> nx.Graph:
+	g : nx.Graph = nx.empty_graph(n, (nx.DiGraph if directed_edges else nx.Graph))
+	for edge in edges:
+		if directed_edges or not only_unilateral_edges or (edge[1], edge[0]) in edges:
+			g.add_edge(edge[0], edge[1], weight=distance(edge[0], edge[1]))
+	return g
+
+
 outcome_graph = nx.Graph()
 def build_outcome(edges : tuple) -> None:
 	if skip_infinite and len(edges) < n - 1:
 		return
 
-	g : nx.DiGraph = nx.empty_graph(n, nx.DiGraph)
-	for edge in edges:
-		g.add_edge(edge[0], edge[1], weight=distance(edge[0], edge[1]))
-
-	costs = player_costs(g)
+	costs = player_costs(build_graph(edges), edges)
 	if not skip_infinite or (costs != math.inf and costs['total'] != math.inf):
-		outcome_graph.add_node(g, costs = costs)
-		outcomes[edges] = g
+		outcome_graph.add_node(edges, costs = costs)
 
 def connect_outcomes() -> None:
-	for edges in outcomes:
-		g = outcomes[edges]
-		if greedy:
+	for edges in outcome_graph:
+		if greedy_equilibria:
 			for edge in edges:
-				neighbor = outcomes.get(tuple(i for i in edges if i != edge), None)
-				if neighbor is not None:
-					outcome_graph.add_edge(g, neighbor, changer=edge[0])
+				neighbor = tuple(i for i in edges if i != edge)
+				if neighbor in outcome_graph:
+					outcome_graph.add_edge(edges, neighbor, changer=edge[0])
 		else:
 			for player in range(n):
-				player_edges = [(player, a) for a in range(n) if a != player]
+				player_edges = [(player, b) for b in range(n) if b != player and (directed_edges or player < b)]
 				for toggle_edges in chain.from_iterable(combinations(player_edges, r) for r in range(1, len(player_edges)+1)):
-					neighbor_edges = tuple(edge for edge in all_edges if (edge in toggle_edges) != (edge in edges))
-					neighbor = outcomes.get(neighbor_edges, None)
-					if neighbor is not None:
-						outcome_graph.add_edge(g, neighbor, changer=player)
+					neighbor = tuple(edge for edge in all_edges if (edge in toggle_edges) != (edge in edges))
+					if neighbor in outcome_graph:
+						outcome_graph.add_edge(edges, neighbor, changer=player)
 
 def build_outcome_graph() -> None:
 	print('Building outcomes')
@@ -97,9 +101,9 @@ def build_outcome_graph() -> None:
 	print('Connecting outcomes')
 	connect_outcomes()
 
-def is_equilibrium(graph: nx.Graph, costs: dict, node: int) -> bool:
-	for neighbor in graph[node]:
-		player = graph[node][neighbor]['changer']
+def is_equilibrium(outcome_graph: nx.Graph, costs: dict, node: int) -> bool:
+	for neighbor in outcome_graph[node]:
+		player = outcome_graph[node][neighbor]['changer']
 		if costs[node][player] > costs[neighbor][player]:
 			return False
 	return True
@@ -122,16 +126,17 @@ for node in outcome_graph.nodes():
 
 print('Drawing')
 print(len(equilibria))
-w = math.ceil(math.sqrt(len(equilibria) + 1))
-h = math.ceil((len(equilibria) + 1) / w)
-print(w,h)
-fig, axs = plt.subplots(w,h)
-labels = {graph : index + 1 for index, graph in enumerate(equilibria)}
-#nx.draw(outcome_graph, node_color=colors)
-nx.draw(outcome_graph.subgraph(equilibria), labels=labels, ax=axs[0])
+if len(equilibria) > 0:
+	w = math.ceil(math.sqrt(len(equilibria) + 1))
+	h = math.ceil((len(equilibria) + 1) / w)
+	print(w,h)
+	fig, axs = plt.subplots(w,h)
+	labels = {graph : index + 1 for index, graph in enumerate(equilibria)}
+	#nx.draw(outcome_graph, node_color=colors)
+	nx.draw(outcome_graph.subgraph(equilibria), labels=labels, ax=axs[0])
 
 
-for i, equilibrium in enumerate(equilibria):
-	print(costs[equilibrium])
-	nx.draw(equilibrium, pos = positions, with_labels=True, ax=axs[i+1])
-	plt.show()
+	for i, equilibrium in enumerate(equilibria):
+		print(costs[equilibrium])
+		nx.draw(build_graph(equilibrium), pos = positions, with_labels=True, ax=axs[i+1])
+		plt.show()
