@@ -7,8 +7,8 @@ positions = [(-0.13698283326720598, 0.08288618577076463), (1, 0), (2, 0), (0.499
 alpha = 0.6
 greedy_equilibria = False
 greedy_routing = True
-directed_edges = False
-only_unilateral_edges = True # Only relevant if directed_edges = False
+directed_edges = True
+only_unilateral_edges = False # Only relevant if directed_edges = False
 skip_infinite = True
 
 n = len(positions)
@@ -30,7 +30,7 @@ def player_costs(graph : nx.Graph, edges: tuple) -> dict:
 		cost += alpha * len(edges)
 
 		#Stretches
-		lengths = nx.shortest_path_length(graph, node)
+		lengths = nx.shortest_path_length(graph, node, weight="weight")
 		for other_node in graph.nodes():
 			if other_node != node:
 				if other_node in lengths:
