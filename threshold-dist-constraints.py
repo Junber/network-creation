@@ -35,7 +35,7 @@ def main():
 		global model
 		model = cp_model.CpModel()
 
-		n = 7
+		n = 6
 		vars = {}
 		for v in var_names(n):
 			vars[v] = model.NewIntVar(1, var_upper_bound, v)
@@ -43,9 +43,10 @@ def main():
 		t = model.NewIntVar(1, var_upper_bound, 't')
 
 		good_paths = [
-			"30156", "312", "342",
-			"412", "43156",
-			"156"
+			"3015", "312", "342",
+			"412", "4315",
+			
+			"015", "215", "315", "415",
 		]
 
 		for path in good_paths:
@@ -65,9 +66,14 @@ def main():
 		
 		bad_paths = [
 			"3012", "3412",
-			"42156",
-			"051", "251", "351", "451", 
-			"061", "261", "361", "461", 
+			"4215",
+
+			"051", "251", "351", "451",
+
+			"021", "031", "041",
+			"201", "231", "241",
+			"310", "320", "340",
+			"304", "314", "324",
 		]
 		for path in bad_paths:
 			length = 0
@@ -117,7 +123,6 @@ def main():
 
 			all_distance_graph = nx.Graph()
 			metric_distance_graph = nx.Graph()
-			distance_graph = nx.Graph()
 			for v1 in range(n):
 				for v2 in range(v1+1, n):
 					trivial_edge = False
@@ -129,10 +134,9 @@ def main():
 						metric_distance_graph.add_edge(v1, v2, length=solver.Value(vars[name(v1, v2)])//distance_mult)
 					all_distance_graph.add_edge(v1, v2, length=solver.Value(vars[name(v1, v2)])//distance_mult)
 
-			positions = [(0,0), (2,0), (4,0), (1,-1), (3, -1), (1,2), (2,4)]
+			positions = [(0,0), (2,-1), (4,0), (1,-3), (3, -3), (1.5,2), (2,4)]
 			draw_graph(all_distance_graph, positions)
-			#draw_graph(metric_distance_graph, positions)
-			#draw_graph(distance_graph, positions)
+			draw_graph(metric_distance_graph, positions)
 			plt.show()
 			break
 		else:
