@@ -3,22 +3,21 @@ import pygeosolve
 
 epsilon = 0.00001
 
-distances = {
-	'ab': 1.4,
-	'bc': 1.4,
-	'yz': 1,
-	'ay': 2,
-	'by': 2.2,
-	'bz': 2.4,
-	'cz': 2.6,
+vertices = {
+	'u': (0, 0),
+	'v': (3, 0),
+	's': (1, 3),
+	'x': (4, 1),
 }
 
-vertices = {
-	'a': (0, 0),
-	'b': (1, 0),
-	'c': (1 + distances['bc'], 0),
-	'y': (0.5, 1),
-	'z': (1.5, 1),
+distances = {
+	'uv': 6,
+	
+	'us': 9,
+	'vs': 7,
+
+	'ux': 17,
+	'sx': 12,
 }
 
 problem = pygeosolve.Problem()
@@ -30,8 +29,8 @@ for name1, name2 in itertools.combinations(vertices.keys(), 2):
 	problem.add_line(name1 + name2, problem[name1], problem[name2])
 
 
-problem.constrain_position('b')
-problem.constrain_position('c')
+problem.constrain_position('u')
+problem.constrain_position('v')
 
 for name, distance in distances.items():
 	problem.constrain_line_length(name, distance)
@@ -43,6 +42,7 @@ print("Success:", result.success)
 multiplier = 10
 positions = {vertex : (problem[vertex].x * multiplier, problem[vertex].y * multiplier) for vertex in vertices.keys()}
 print(positions)
+print(list(positions.values()))
 
 for name1, name2 in itertools.combinations(vertices.keys(), 2):
 	edge = name1+name2
