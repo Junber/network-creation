@@ -114,7 +114,8 @@ def main():
 		#model.Add(2 * mult(x, za) > mult(yz, yz)+mult(za,yz))
 		#model.Add(mult(zc,za) + mult(bc,za) > mult(yz, zb) + mult(yz, zb)) #zcb > zya
 
-		model.Minimize(10 * alpha + ab + bc + yz + ya + yb + yc + za + zb + zc + 1000*(za + yz - ya))
+		#model.Minimize(10 * alpha + ab + bc + yz + ya + yb + yc + za + zb + zc + 1000*(za + yz - ya))
+		model.Minimize(10 * alpha + ab + bc + yz + ya - 10* yb + yc + za + zb + zc + 1000*(zc - zb + zb - yb + yc - zc))
 
 		# Creates a solver and solves the model.
 		solver = cp_model.CpSolver()
